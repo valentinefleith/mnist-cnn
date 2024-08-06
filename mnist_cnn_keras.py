@@ -17,27 +17,14 @@ We will go through the following steps:
 ## 1. Importing libraries and the dataset
 """
 
-# Commented out IPython magic to ensure Python compatibility.
 # Utils
 import numpy as np
 import pandas as pd
-import random
-import seaborn as sns
 import matplotlib.pyplot as plt
-# %matplotlib inline
-
-# Sklearn
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
 
 # Tensorflow and keras
-import keras
-from tensorflow.python.keras.models import Sequential
-from tensorflow.python.keras.layers import Dense, Flatten, Conv2D, Dropout, MaxPooling2D
-from IPython.display import SVG
-from keras.utils import plot_model, model_to_dot
+import tensorflow as tf
 from keras.datasets import mnist
-from keras import backend as K
 
 # Parameters
 
@@ -48,7 +35,7 @@ TEST_SIZE = 0.2
 RANDOM_STATE = 42
 
 # Model
-NO_EPOCHS = 20
+NO_EPOCHS = 5
 BATCH_SIZE = 128
 VERBOSE = 1
 PATIENCE = 20
@@ -65,18 +52,64 @@ print(pd.Series(y_train).value_counts())
 """## 2. Data preparation
 
 We will get only 20k images for training, to save time.
+Also, the pixel values of the images range from 0 through 255. We scale these values to a range 0 to 1 by dividing their values by 255.0.
 """
 
 # get only 20k images for training
 idx = np.random.randint(x_train.shape[0], size=20000)
 x_train = x_train[idx, :]
 y_train = y_train[idx]
+x_train, x_test = x_train / 255.0, x_test / 255.0
 
-"""We need to reshape `x_train` from shape `(2000, 28, 28)` to `(2000, 28, 28, 1)`. Same for `x_test`.
+"""To verify that the data is in the correct format and that we are ready to build and train the network, let's display the first 25 images from the training set and display the class name below each image."""
 
+plt.figure(figsize=(10, 10))
+for i in range(25):
+    plt.subplot(5, 5, i + 1)
+    plt.xticks([])
+    plt.yticks([])
+    plt.grid(False)
+    plt.imshow(x_train[i], cmap=plt.cm.binary)
+    plt.xlabel(y_train[i])
+plt.show()
+
+"""## 3. Building the model
+
+We will build the network with:
+- 2 convolutional layers having 32 and 64 filters respectively
+- a max pooling layer
+- Flatten the output of the pooling layer to give us a long vector
+- full connected dense layer with 128 neurons
+- a softmax layer with 10 neurons
+
+To build a model in Keras -> instantiate a `Sequential` model and keep adding `keras.layers` to it. We will also use some dropouts.
 """
 
-x_train = x_train.reshape(x_train.shape[0], IMG_ROWS, IMG_COLS, 1)
-x_test = x_test.reshape(x_test.shape[0], IMG_ROWS, IMG_COLS, 1)
-print(x_train.shape)
-print(x_test.shape)
+model = tf.keras.models.Sequential(
+    [
+        tf.keras.layers.Conv2D(
+            32, (3, 3), activation="relu", input_shape=(IMG_ROWS, IMG_COLS, 1)
+        ),
+        tf.keras.layers.Conv2D(64, (3, 3), activation="relu"),
+        tf.keras.layers.MaxPooling2D((2, 2)),
+        tf.keras.layers.Dropout(0.25),
+        tf.keras.layers.Flatten(input_shape=(IMG_ROWS, IMG_COLS)),
+        tf.keras.layers.Dense(128, activation="relu"),
+        tf.keras.layers.Dropout(0.5),
+        tf.keras.layers.Dense(NUM_CLASSES, activation="softmax"),
+    ]
+)
+model.summary()
+
+"""Define a loss function for training using `losses.SparseCategoricalCrossentropy`. The loss function takes a vector of ground truth values and a vector of logits and returns a scalar loss for each example. The loss is equal to the negative log probability of the true class -> if the loss is 0, then the model is sure for the correct class."""
+
+loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+
+"""## 4. Fitting and evaluating the model"""
+
+model.compile(optimizer="adam", loss=loss_fn, metrics=["accuracy"])
+model.fit(x_train, y_train, epochs=NO_EPOCHS)
+
+"""The `model.evaluate` method checks the model's performance usually on a validation set or test set."""
+
+model.evaluate(x_test, y_test, verbose=2)
