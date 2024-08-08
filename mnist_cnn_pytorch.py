@@ -99,6 +99,7 @@ from tqdm import tqdm_notebook as tqdm
 def train(model, device, train_loader, optimizer, epoch, log_interval=10000):
     model.train()
     tk0 = tqdm(train_loader, total=int(len(train_loader)))
+    train_loss = 0
     counter = 0
     for batch_idx, (data, target) in enumerate(tk0):
         data, target = data.to(device), target.to(device)
@@ -107,10 +108,15 @@ def train(model, device, train_loader, optimizer, epoch, log_interval=10000):
         loss = F.nll_loss(output, target)
         loss.backward()
         optimizer.step()
+
+        train_loss += loss.item()
         counter += 1
         tk0.set_postfix(
             loss=(loss.item() * data.size(0) / (counter * train_loader.batch_size))
         )
+
+    avg_train_loss = train_loss / len(train_loader)
+    return avg_train_loss
 
 
 def test(model, device, test_loader):
@@ -124,19 +130,52 @@ def test(model, device, test_loader):
             test_loss += F.nll_loss(output, target, reduction="sum").item()
             pred = output.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
-    test_loss /= len(test_loader.dataset)
+
+    avg_test_loss = test_loss / len(test_loader.dataset)
+    accuracy = 100.0 * correct / len(test_loader.dataset)
 
     print(
         "\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n".format(
-            test_loss,
-            correct,
-            len(test_loader.dataset),
-            100.0 * correct / len(test_loader.dataset),
+            avg_test_loss, correct, len(test_loader.dataset), accuracy
         )
     )
 
+    return avg_test_loss, accuracy
 
-num_epoch = 3
-for epoch in range(1, num_epoch + 1):
-    train(model, device, train_loader, optimizer, epoch)
-    test(model, device, test_loader)
+
+num_epochs = 3
+train_losses = []
+test_losses = []
+test_accuracies = []
+
+for epoch in range(1, num_epochs + 1):
+    train_loss = train(model, device, train_loader, optimizer, epoch)
+    test_loss, test_accuracy = test(model, device, test_loader)
+
+    train_losses.append(train_loss)
+    test_losses.append(test_loss)
+    test_accuracies.append(test_accuracy)
+
+"""Let's plot the learning curves."""
+
+plt.figure(figsize=(12, 5))
+
+# Plot training and test loss
+plt.subplot(1, 2, 1)
+plt.plot(range(1, num_epochs + 1), train_losses, label="Train Loss")
+plt.plot(range(1, num_epochs + 1), test_losses, label="Test Loss")
+plt.title("Loss vs. Epochs")
+plt.xlabel("Epochs")
+plt.ylabel("Loss")
+plt.legend()
+
+# Plot test accuracy
+plt.subplot(1, 2, 2)
+plt.plot(range(1, num_epochs + 1), test_accuracies, label="Test Accuracy")
+plt.title("Accuracy vs. Epochs")
+plt.xlabel("Epochs")
+plt.ylabel("Accuracy (%)")
+plt.legend()
+
+plt.tight_layout()
+plt.show()
