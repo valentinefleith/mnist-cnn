@@ -108,8 +108,24 @@ loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 """## 4. Fitting and evaluating the model"""
 
 model.compile(optimizer="adam", loss=loss_fn, metrics=["accuracy"])
-model.fit(x_train, y_train, epochs=NO_EPOCHS)
+history = model.fit(x_train, y_train, epochs=NO_EPOCHS)
 
 """The `model.evaluate` method checks the model's performance usually on a validation set or test set."""
 
 model.evaluate(x_test, y_test, verbose=2)
+
+"""Now let's plot learning curves. First accuracy:"""
+
+plt.plot(history.history["accuracy"])
+plt.title("model accuracy")
+plt.ylabel("accuracy")
+plt.xlabel("epoch")
+plt.show()
+
+"""Second loss:"""
+
+plt.plot(history.history["loss"])
+plt.title("model loss")
+plt.ylabel("loss")
+plt.xlabel("epoch")
+plt.show()
