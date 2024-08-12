@@ -49,6 +49,34 @@ print("x_train shape:", x_train.shape, "y_train shape:", y_train.shape)
 
 print(pd.Series(y_train).value_counts())
 
+"""If the dataset is locally and custom, run this code:"""
+
+train_dir = ""
+validation_dir = ""
+
+from keras.preprocessing.image import ImageDataGenerator
+
+train_datagen = ImageDataGenerator(rescale=1./255)
+validation_datagen = ImageDataGenerator(rescale=1./255)
+train_generator = train_datagen.flow_from_directory(
+        train_dir,
+        target_size=(200, 200),
+        batch_size=20,
+        class_mode='binary')
+
+validation_generator = validation_datagen.flow_from_directory(
+        validation_dir,
+        target_size=(200, 200),
+        batch_size=20,
+        class_mode='binary')
+
+x_train = train_generator
+y_train = validation_generator
+for data_batch, labels_batch in train_generator:
+    print('data batch shape:', data_batch.shape)
+    print('labels batch shape:', labels_batch.shape)
+    break
+
 """## 2. Data preparation
 
 We will get only 20k images for training, to save time.
@@ -63,9 +91,9 @@ x_train, x_test = x_train / 255.0, x_test / 255.0
 
 """To verify that the data is in the correct format and that we are ready to build and train the network, let's display the first 25 images from the training set and display the class name below each image."""
 
-plt.figure(figsize=(10, 10))
+plt.figure(figsize=(10,10))
 for i in range(25):
-    plt.subplot(5, 5, i + 1)
+    plt.subplot(5,5,i+1)
     plt.xticks([])
     plt.yticks([])
     plt.grid(False)
@@ -85,20 +113,16 @@ We will build the network with:
 To build a model in Keras -> instantiate a `Sequential` model and keep adding `keras.layers` to it. We will also use some dropouts.
 """
 
-model = tf.keras.models.Sequential(
-    [
-        tf.keras.layers.Conv2D(
-            32, (3, 3), activation="relu", input_shape=(IMG_ROWS, IMG_COLS, 1)
-        ),
-        tf.keras.layers.Conv2D(64, (3, 3), activation="relu"),
-        tf.keras.layers.MaxPooling2D((2, 2)),
-        tf.keras.layers.Dropout(0.25),
-        tf.keras.layers.Flatten(input_shape=(IMG_ROWS, IMG_COLS)),
-        tf.keras.layers.Dense(128, activation="relu"),
-        tf.keras.layers.Dropout(0.5),
-        tf.keras.layers.Dense(NUM_CLASSES, activation="softmax"),
-    ]
-)
+model = tf.keras.models.Sequential([
+    tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=(IMG_ROWS, IMG_COLS, 1)),
+    tf.keras.layers.Conv2D(64, (3, 3), activation='relu'),
+    tf.keras.layers.MaxPooling2D((2, 2)),
+    tf.keras.layers.Dropout(0.25),
+    tf.keras.layers.Flatten(input_shape=(IMG_ROWS, IMG_COLS)),
+    tf.keras.layers.Dense(128, activation='relu'),
+    tf.keras.layers.Dropout(0.5),
+    tf.keras.layers.Dense(NUM_CLASSES, activation='softmax')
+])
 model.summary()
 
 """Define a loss function for training using `losses.SparseCategoricalCrossentropy`. The loss function takes a vector of ground truth values and a vector of logits and returns a scalar loss for each example. The loss is equal to the negative log probability of the true class -> if the loss is 0, then the model is sure for the correct class."""
@@ -107,7 +131,9 @@ loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
 """## 4. Fitting and evaluating the model"""
 
-model.compile(optimizer="adam", loss=loss_fn, metrics=["accuracy"])
+model.compile(optimizer='adam',
+              loss=loss_fn,
+              metrics=['accuracy'])
 history = model.fit(x_train, y_train, epochs=NO_EPOCHS)
 
 """The `model.evaluate` method checks the model's performance usually on a validation set or test set."""
@@ -116,16 +142,16 @@ model.evaluate(x_test, y_test, verbose=2)
 
 """Now let's plot learning curves. First accuracy:"""
 
-plt.plot(history.history["accuracy"])
-plt.title("model accuracy")
-plt.ylabel("accuracy")
-plt.xlabel("epoch")
+plt.plot(history.history['accuracy'])
+plt.title('model accuracy')
+plt.ylabel('accuracy')
+plt.xlabel('epoch')
 plt.show()
 
 """Second loss:"""
 
-plt.plot(history.history["loss"])
-plt.title("model loss")
-plt.ylabel("loss")
-plt.xlabel("epoch")
+plt.plot(history.history['loss'])
+plt.title('model loss')
+plt.ylabel('loss')
+plt.xlabel('epoch')
 plt.show()
